@@ -58,17 +58,24 @@ var defaultManagedEnvironment = {
   }
 }
 
-resource logAnalyticsWorkspaces 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing =[for (managedEnvironment, i) in managedEnvironments: if (!empty(union(defaultManagedEnvironment, managedEnvironment).logAnalyticsWorkspace.name)) {
+
+
+
+/*
+resource logAnalyticsWorkspaces 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = [for (managedEnvironment, i) in managedEnvironments: if (!empty(union(defaultManagedEnvironment, managedEnvironment).logAnalyticsWorkspace.name)) {
   name: managedEnvironment.logAnalyticsWorkspace.name
   scope: resourceGroup(union(defaultManagedEnvironment, managedEnvironment).logAnalyticsWorkspace.subscriptionId, managedEnvironment.logAnalyticsWorkspace.resourceGroup)
 }]
+*/
+
+
 
 module managedEnvironmentsRes 'managed-environment.bicep' = [for (managedEnvironment, i) in managedEnvironments: {
   name: 'managedEnvironment-${uniqueString(resourceGroup().name)}-${i}'
   params: {
     managedEnvironment: union(defaultManagedEnvironment, managedEnvironment)
-    workspaceId: !empty(union(defaultManagedEnvironment, managedEnvironment).logAnalyticsWorkspace.name) ? logAnalyticsWorkspaces[i].properties.customerId : ''
-    workspacePrimarySharedKey: !empty(union(defaultManagedEnvironment, managedEnvironment).logAnalyticsWorkspace.name) ? logAnalyticsWorkspaces[i].listKeys().primarySharedKey : ''
+    //workspaceId: !empty(union(defaultManagedEnvironment, managedEnvironment).logAnalyticsWorkspace.name) ? logAnalyticsWorkspaces[i].properties.customerId : ''
+    //workspacePrimarySharedKey: !empty(union(defaultManagedEnvironment, managedEnvironment).logAnalyticsWorkspace.name) ? logAnalyticsWorkspaces[i].listKeys().primarySharedKey : ''
     tags: union(tags, union(defaultManagedEnvironment, managedEnvironment).tags)
   }
 }]

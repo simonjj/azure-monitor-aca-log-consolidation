@@ -1,7 +1,7 @@
 param managedEnvironment object
-param workspaceId string
+//param workspaceId string
 @secure()
-param workspacePrimarySharedKey string
+//param workspacePrimarySharedKey string
 param tags object
 
 resource daprAppInsights 'Microsoft.Insights/components@2020-02-02' existing = if (!empty(managedEnvironment.daprApplicationInsights.name)) {
@@ -19,6 +19,20 @@ resource infrastructureSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-11
   parent: infrastructureVnet
 }
 
+// this was added because prior the log analytics space had to exist
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: managedEnvironment.diagnosticSettings.logAnalyticsWorkspace.name
+  //scope: resourceGroup(managedEnvironment.diagnosticSettings.logAnalyticsWorkspace.subscriptionId, managedEnvironment.diagnosticSettings.logAnalyticsWorkspace.resourceGroup)
+  location: resourceGroup().location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+  }
+}
+
+
 resource managedEnvironmentRes 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: managedEnvironment.name
   location: resourceGroup().location
@@ -28,8 +42,8 @@ resource managedEnvironmentRes 'Microsoft.App/managedEnvironments@2024-03-01' = 
       // Cannot be set to 'none', null acts as 'none'
       destination: !empty(managedEnvironment.logAnalyticsWorkspace.name) ? 'log-analytics' : managedEnvironment.enableAzureMonitorLogsDestination ? 'azure-monitor' : null
       logAnalyticsConfiguration: !empty(managedEnvironment.logAnalyticsWorkspace.name) ? {
-        customerId: workspaceId
-        sharedKey: workspacePrimarySharedKey
+        customerId: logAnalyticsWorkspace.id
+        sharedKey: logAnalyticsWorkspace.listKeys().primarySharedKey
       } : null
     }
     daprAIConnectionString: !empty(managedEnvironment.daprApplicationInsights.name) ? daprAppInsights.properties.ConnectionString : ''
@@ -137,10 +151,13 @@ module certificate 'managed-environment-certificate.bicep' = [for (certificate, 
 }]
 
 
+
+/*
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = if (!empty(managedEnvironment.diagnosticSettings.logAnalyticsWorkspace.name)) {
   name: managedEnvironment.diagnosticSettings.logAnalyticsWorkspace.name
   scope: resourceGroup(managedEnvironment.diagnosticSettings.logAnalyticsWorkspace.subscriptionId, managedEnvironment.diagnosticSettings.logAnalyticsWorkspace.resourceGroup)
 }
+*/
 
 resource diagnosticSettingsLogAnalytics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(managedEnvironment.diagnosticSettings.logAnalyticsWorkspace.name)) {
   name: 'LogsAndMetricsToLogAnalytics'
